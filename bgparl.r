@@ -162,22 +162,22 @@ m = subset(m, authors != "GOV")
 m$n_au = 1 + str_count (m$authors, ";")
 
 s = read.csv("data/sponsors.csv", stringsAsFactors = FALSE)
+
 s$url = gsub("\\D", "", s$url)
-s$photo = TRUE
+
+s$photo = 1 # all photos found, ignore attribute later
 
 # download photos
 for(i in unique(s$url)) {
   photo = paste0("photos/", i, ".png")
-  if(!file.exists(photo)) {
+  if(!file.exists(photo))
     try(download.file(paste0("http://www.parliament.bg/images/Assembly/", i, ".png"),
                       photo, mode = "wb", quiet = TRUE), silent = TRUE)
-  }
   if(!file.exists(photo) | !file.info(photo)$size) {
-    file.remove(photo)
-    s$photo[ s$url == i ] = NA
+    file.remove(photo) # will warn if missing
+    s$photo[ s$url == i ] = 0
   }
 }
-s$photo = as.numeric(!is.na(s$photo)) # all photos found, ignore attribute later
 
 s$constituency = gsub("\\d|-| (GRAD|OKRAG|OBLAST)", "", s$constituency)
 s$constituency = sapply(tolower(s$constituency), simpleCap)
