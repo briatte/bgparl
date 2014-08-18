@@ -2,6 +2,7 @@
 
 library(igraph)
 library(GGally)
+library(grid)
 library(network)
 library(sna)
 library(qdap)
@@ -11,7 +12,12 @@ library(stringr)
 library(tnet)
 library(XML)
 
-gexf = FALSE
+gexf = TRUE
+plot = TRUE
+
+dir.create("data", showWarnings = FALSE)
+dir.create("photos", showWarnings = FALSE)
+dir.create("plots", showWarnings = FALSE)
 
 # http://stackoverflow.com/a/6364905/635806
 
@@ -24,16 +30,16 @@ simpleCap <- function(x) {
 # colors
 
 colors = c(
-  "Coalition for Bulgaria" = "#E41A1C",   # Коалиция за България (KB, led by Socialists), red
-  "National Movement Simeon the Second" = "#FFFF33",  # Национално движение Симеон Втори (NMS), yellow
-  "Order, Lawfulness, Justice" = "#FDB462",  # Ред, законност и справедливост (RZS), light orange
-  "Bulgarian People's Union" = "#FF7F00",  # Български Народен Съюз (BNS), orange
-  "Citizens for European Development of Bulgaria" = "#984EA3", # ГЕРБ (GERB), purple
-  "United Democratic Forces" = "#BEBADA",  # Обединени Демократични Сили (ODS, 2005 election), light purple
-  "Movement for Rights and Freedoms" = "#80B1D3", # Движение за права и свободи (DPS), light blue
-  "Blue Coalition" = "#377EB8", # Синята коалиция (SK), blue
-  "Democrats for Strong Bulgaria" = "#053061", # Демократи за Силна България (DSB), dark blue
-  "Ataka" = "#A65628" # Атака (A), brown
+  "KB" = "#E41A1C",   # Коалиция за България (Coalition for Bulgaria, led by Socialists), red
+  "NMS" = "#FFFF33",  # Национално движение Симеон Втори (National Movement Simeon the Second), yellow
+  "RZS" = "#FDB462",  # Ред, законност и справедливост (Order, Lawfulness, Justice), light orange
+  "BNS" = "#FF7F00",  # Български Народен Съюз (Bulgarian People's Union), orange
+  "GERB" = "#984EA3", # ГЕРБ (Citizens for European Development of Bulgaria), purple
+  "ODS" = "#BEBADA",  # Обединени Демократични Сили (United Democratic Forces, 2005 election), light purple
+  "DPS" = "#80B1D3", # Движение за права и свободи (Movement for Rights and Freedoms), light blue
+  "SK" = "#377EB8", # Синята коалиция (Blue Coalition), blue
+  "DSB" = "#053061", # Демократи за Силна България (Democrats for Strong Bulgaria), dark blue
+  "A" = "#A65628" # Атака (Ataka), brown
 )
 order = names(colors)
 
@@ -108,7 +114,6 @@ if(!file.exists(data)) {
   
   write.csv(cbind(legislature, b), data, row.names = FALSE)
   
-  
   # sponsors
   
   data = "data/sponsors.csv"
@@ -157,94 +162,105 @@ m = subset(m, authors != "GOV")
 m$n_au = 1 + str_count (m$authors, ";")
 
 s = read.csv("data/sponsors.csv", stringsAsFactors = FALSE)
+s$url = gsub("\\D", "", s$url)
+s$photo = TRUE
+
+# download photos
+for(i in unique(s$url)) {
+  photo = paste0("photos/", i, ".png")
+  if(!file.exists(photo)) {
+    try(download.file(paste0("http://www.parliament.bg/images/Assembly/", i, ".png"),
+                      photo, mode = "wb", quiet = TRUE), silent = TRUE)
+  }
+  if(!file.exists(photo) | !file.info(photo)$size) {
+    file.remove(photo)
+    s$photo[ s$url == i ] = NA
+  }
+}
+s$photo = as.numeric(!is.na(s$photo)) # all photos found, ignore attribute later
 
 s$constituency = gsub("\\d|-| (GRAD|OKRAG|OBLAST)", "", s$constituency)
 s$constituency = sapply(tolower(s$constituency), simpleCap)
 
 # name fixes (Google translations with first name checks)
 
-s$name[ s$url == "MP/171" ] = "Kostadin Stoyanov PASKALEV"
-s$name[ s$url == "MP/131" ] = "ATANAS PETROV ATANASOV"
-s$name[ s$url == "MP/57" ] = "IVO PŬRVANOV ATANASOV"
-s$name[ s$url == "MP/819" ] = "PETAR DIMITROV POPOV"
-s$name[ s$url == "MP/815" ] = "HRISTO KIRILOV POPOV"
-s$name[ s$url == "MP/24" ] = "BOYKO STEFANOV VELIKOV"
-s$name[ s$url == "MP/32" ] = "MIHAIL RAĬKOV MIKOV"
-s$name[ s$url == "MP/190" ] = "VOLER NIKOLOV SIDEROV"
-s$name[ s$url == "MP/1" ] = "LUBEN ANDONOV KORNEZOV"
-s$name[ s$url == "MP/79" ] = "ANGEL PETROV NAĬDENOV"
-s$name[ s$url == "MP/790" ] = "DENITSA IVAĬLOVA DIMITROVA"
-s$name[ s$url == "MP/792" ] = "ILKO DIMITROV DIMITROV"
-s$name[ s$url == "MP/209" ] = "STELA DIMITROVA ANGELOVA-BANKOVA"
-s$name[ s$url == "MP/114" ] = "ELEONORA NIKOLAEVA NIKOLOVA"
+s$name[ s$url == "171" ] = "Kostadin Stoyanov PASKALEV"
+s$name[ s$url == "131" ] = "ATANAS PETROV ATANASOV"
+s$name[ s$url == "57" ] = "IVO PŬRVANOV ATANASOV"
+s$name[ s$url == "819" ] = "PETAR DIMITROV POPOV"
+s$name[ s$url == "815" ] = "HRISTO KIRILOV POPOV"
+s$name[ s$url == "24" ] = "BOYKO STEFANOV VELIKOV"
+s$name[ s$url == "32" ] = "MIHAIL RAĬKOV MIKOV"
+s$name[ s$url == "190" ] = "VOLER NIKOLOV SIDEROV"
+s$name[ s$url == "1" ] = "LUBEN ANDONOV KORNEZOV"
+s$name[ s$url == "79" ] = "ANGEL PETROV NAĬDENOV"
+s$name[ s$url == "790" ] = "DENITSA IVAĬLOVA DIMITROVA"
+s$name[ s$url == "792" ] = "ILKO DIMITROV DIMITROV"
+s$name[ s$url == "209" ] = "STELA DIMITROVA ANGELOVA-BANKOVA"
+s$name[ s$url == "114" ] = "ELEONORA NIKOLAEVA NIKOLOVA"
 
 s$name = sapply(tolower(s$name), simpleCap)
-s$uid = paste(s$name, gsub("\\D", "", s$url))
+s$uid = paste(s$name, s$url)
 
-s$party[ grepl("Ataka|Attack|Атака", s$party) ] = 
-  "Ataka" # A
-s$party[ grepl("Movement for Rights and Freedoms|Движение за права и свободи", s$party) ] = 
-  "Movement for Rights and Freedoms" # DPS 
-s$party[ grepl("Coalition for Bulgaria|Коалиция за България", s$party) ] = 
-  "Coalition for Bulgaria" # KB
-s$party[ grepl("GERB|ГЕРБ", s$party) ] = 
-  "Citizens for European Development of Bulgaria" # GERB
-s$party[ grepl("Democrats for Strong Bulgaria|Демократи за Силна България", s$party) ] = 
-  "Democrats for Strong Bulgaria" # DSB
-s$party[ grepl("National Movement Simeon the Second|Национално движение Симеон Втори", s$party) ] = 
-  "National Movement Simeon the Second" # NMS
-s$party[ grepl("Order, Lawfulness Justice|Ред, законност и справедливост", s$party) ] =
-  "Order, Lawfulness, Justice" # RZS
-s$party[ grepl("Blue Coalition|Синята коалиция", s$party) ] =
-  "Blue Coalition" # SK
-s$party[ grepl("United Democratic Forces|Обединени Демократични Сили", s$party) ] =
-  "United Democratic Forces" # ODS
-s$party[ grepl("Bulgarian People's Union|Български Народен Съюз", s$party) ] =
-  "Bulgarian People's Union" # BNS
+s$party[ grepl("Ataka|Attack|Атака", s$party) ] = "A"
+s$party[ grepl("Movement for Rights and Freedoms|Движение за права и свободи", s$party) ] = "DPS" 
+s$party[ grepl("Coalition for Bulgaria|Коалиция за България", s$party) ] = "KB"
+s$party[ grepl("GERB|ГЕРБ", s$party) ] = "GERB"
+s$party[ grepl("Democrats for Strong Bulgaria|Демократи за Силна България", s$party) ] = "DSB"
+s$party[ grepl("National Movement Simeon the Second|Национално движение Симеон Втори", s$party) ] = "NMS"
+s$party[ grepl("Order, Lawfulness Justice|Ред, законност и справедливост", s$party) ] = "RZS"
+s$party[ grepl("Blue Coalition|Синята коалиция", s$party) ] = "SK"
+s$party[ grepl("United Democratic Forces|Обединени Демократични Сили", s$party) ] = "ODS"
+s$party[ grepl("Bulgarian People's Union|Български Народен Съюз", s$party) ] = "BNS"
+
+s$partyname = NA
+s$partyname[ s$party == "A" ] = "Ataka"
+s$partyname[ s$party == "DPS" ] = "Movement for Rights and Freedoms"
+s$partyname[ s$party == "KB" ] = "Coalition for Bulgaria"
+s$partyname[ s$party == "GERB" ] = "Citizens for European Development of Bulgaria"
+s$partyname[ s$party == "DSB" ] = "Democrats for Strong Bulgaria"
+s$partyname[ s$party == "NMS" ] = "National Movement Simeon the Second"
+s$partyname[ s$party == "RZS" ] = "Order, Lawfulness, Justice"
+s$partyname[ s$party == "SK" ] = "Blue Coalition"
+s$partyname[ s$party == "ODS" ] = "United Democratic Forces"
+s$partyname[ s$party == "BNS" ] = "Bulgarian People's Union"
 
 # all sponsors recognized
-stopifnot(all(unique(unlist(strsplit(m$authors, ";"))) %in% gsub("\\D", "", s$url)))
+stopifnot(all(unique(unlist(strsplit(m$authors, ";"))) %in% s$url))
 
 for(l in unique(m$legislature)) {
   
   data = subset(m, legislature == l & n_au > 1)
   cat("Legislature", l, ":", nrow(data), "cosponsored bills, ")
   
-  rownames(s) = gsub("\\D", "", s$url)
+  rownames(s) = s$url
   
-  edges = lapply(data$authors, function(i) {
+  edges = rbind.fill(lapply(data$authors, function(i) {
     
     w = unlist(strsplit(i, ";"))
     d = s[ w, "uid" ]
-    d = expand.grid(d, d)
-    d = subset(d, Var1 != Var2)
-    d$uid = apply(d, 1, function(x) paste0(sort(x), collapse = "_"))
-    d = unique(d$uid)
-    if(length(d)) {
-      d = data.frame(i = gsub("(.*)_(.*)", "\\1", d),
-                     j = gsub("(.*)_(.*)", "\\2", d),
-                     w = length(w))
-      return(d)
-    } else {
+
+    d = subset(expand.grid(d, d), Var1 != Var2)
+    d = unique(apply(d, 1, function(x) paste0(sort(x), collapse = "_")))
+
+    if(length(d))
+      return(data.frame(d, w = length(w) - 1)) # number of cosponsors
+    else
       return(data.frame())
-    }
     
-  })
-  
-  edges = rbind.fill(edges)
-  edges$uid = apply(edges, 1, function(x) paste0(sort(x[ 1:2 ]), collapse = "_"))
-  
+  }))
+    
   # raw edge counts
-  count = table(edges$uid)
+  count = table(edges$d)
   
   # Newman-Fowler weights (weighted quantity of bills cosponsored)
-  edges = aggregate(w ~ uid, function(x) sum(1 / x), data = edges)
+  edges = aggregate(w ~ d, function(x) sum(1 / x), data = edges)
   
   # raw counts
-  edges$count = as.vector(count[ edges$uid ])
+  edges$count = as.vector(count[ edges$d ])
   
-  edges = data.frame(i = gsub("(.*)_(.*)", "\\1", edges$uid),
-                     j = gsub("(.*)_(.*)", "\\2", edges$uid),
+  edges = data.frame(i = gsub("(.*)_(.*)", "\\1", edges$d),
+                     j = gsub("(.*)_(.*)", "\\2", edges$d),
                      w = edges$w, n = edges[, 3])
   
   # network
@@ -254,18 +270,19 @@ for(l in unique(m$legislature)) {
   
   n %n% "title" = paste("Народно събрание", paste0(range(substr(data$date, 1, 4)), collapse = " to "))
   n %n% "n_bills" = nrow(data)
+  n %n% "n_sponsors" = table(subset(m, legislature == l)$n_au)
   
   rownames(s) = s$uid
-  n %v% "url" = s[ network.vertex.names(n), "url" ]
+  n %v% "url" = as.character(s[ network.vertex.names(n), "url" ])
   n %v% "name" = s[ network.vertex.names(n), "name" ]
   # n %v% "sex" = s[ network.vertex.names(n), "sex" ]
   n %v% "born" = s[ network.vertex.names(n), "born" ]
   n %v% "party" = s[ network.vertex.names(n), "party" ]
+  n %v% "partyname" = s[ network.vertex.names(n), "partyname" ]
   # n %v% "nyears" = s[ network.vertex.names(n), "nyears" ]
   n %v% "constituency" = s[ network.vertex.names(n), "constituency" ]
   # n %v% "photo" = s[ network.vertex.names(n), "photo" ]
-  # n %v% "coalition" = ifelse(n %v% "party" %in% c("S", "V", "MP"), "Leftwing", # Rödgröna
-  #                            ifelse(party == "SD", NA, "Rightwing")) # Alliansen
+  # n %v% "coalition" = NA # !fix
   
   network::set.edge.attribute(n, "source", as.character(edges[, 1]))
   network::set.edge.attribute(n, "target", as.character(edges[, 2]))
@@ -334,33 +351,48 @@ for(l in unique(m$legislature)) {
   
   print(table(n %v% "party", exclude = NULL))
   
-  n %v% "size" = as.numeric(cut(n %v% "degree", quantile(n %v% "degree"), include.lowest = TRUE))
-  g = suppressWarnings(ggnet(n, size = 0, segment.alpha = 1/2, # mode = "kamadakawai",
-                             segment.color = party) +
-                         geom_point(alpha = 1/3, aes(size = n %v% "size", color = n %v% "party")) +
-                         geom_point(alpha = 1/2, aes(size = min(n %v% "size"), color = n %v% "party")) +
-                         scale_size_continuous(range = c(6, 12)) +
-                         scale_color_manual("", values = colors, breaks = order) +
-                         theme(legend.key.size = unit(1, "cm"),
-                               legend.text = element_text(size = 16)) +
-                         guides(size = FALSE, color = guide_legend(override.aes = list(alpha = 1/3, size = 6))))
+  # number of bills cosponsored
+  nb = sapply(n %v% "url", function(x) {
+    sum(unlist(strsplit(data$authors, ";")) == x) # ids are varying-length numbers
+  })
+  n %v% "n_bills" = as.vector(nb)
   
-  print(g)
-  
-  ggsave(paste0("bgparl", l, ".pdf"), g, width = 14, height = 9)
-  ggsave(paste0("bgparl", l, ".png"), g, width = 14, height = 9, dpi = 72)
+  if(plot) {
+    
+    n %v% "size" = as.numeric(cut(n %v% "degree", quantile(n %v% "degree"), include.lowest = TRUE))
+    g = suppressWarnings(ggnet(n, size = 0, segment.alpha = 1/2, # mode = "kamadakawai",
+                               segment.color = party) +
+                           geom_point(alpha = 1/3, aes(size = n %v% "size", color = n %v% "party")) +
+                           geom_point(alpha = 1/2, aes(size = min(n %v% "size"), color = n %v% "party")) +
+                           scale_size_continuous(range = c(6, 12)) +
+                           scale_color_manual("", values = colors, breaks = order) +
+                           theme(legend.key.size = unit(1, "cm"),
+                                 legend.text = element_text(size = 16)) +
+                           guides(size = FALSE, color = guide_legend(override.aes = list(alpha = 1/3, size = 6))))
+    
+    print(g)
+    
+    ggsave(paste0("plots/net_bg", l, ".pdf"), g, width = 12, height = 9)
+    ggsave(paste0("plots/net_bg", l, ".jpg"), g + theme(legend.position = "none"),
+           width = 9, height = 9, dpi = 72)
+    
+  }
   
   assign(paste0("net_bg", substr(l, 1, 4)), n)
+  assign(paste0("edges_bg", substr(l, 1, 4)), edges)
+  assign(paste0("bills_bg", substr(l, 1, 4)), data)
   
   if(gexf) {
     
     rgb = t(col2rgb(colors[ names(colors) %in% as.character(n %v% "party") ]))
     mode = "fruchtermanreingold"
-    meta = list(creator = "rgexf", description = paste0(mode, " placement"),
-                keywords = "Parliament, Bulgaria")
+    meta = list(creator = "rgexf",
+                description = paste(mode, "placement", nrow(data), "bills"),
+                keywords = "parliament, bulgaria")
     
-    node.att = data.frame(url = as.character(gsub("\\D", "", n %v% "url")),
-                          party = n %v% "party",
+    node.att = data.frame(url = n %v% "url",
+                          party = n %v% "partyname",
+                          bills = n %v% "n_bills",
                           constituency = n %v% "constituency",
                           distance = round(n %v% "distance", 1),
                           # photo = n %v% "photo",
@@ -399,12 +431,15 @@ for(l in unique(m$legislature)) {
                                   size = round(n %v% "degree", 1)),
                # edgesVizAtt = list(size = relations[, 4]),
                defaultedgetype = "undirected", meta = meta,
-               output = paste0("bgparl", l, ".gexf"))
+               output = paste0("net_bg", l, ".gexf"))
     
   }
   
 }
 
-save(list = ls(pattern = "net_bg"), file = "bgparl.rda")
+save(list = ls(pattern = "^(net|edges|bills)_bg\\d{4}$"), file = "data/net_bg.rda")
+
+if(gexf)
+  zip("net_bg.zip", dir(pattern = "^net_bg\\d{4}-\\d{4}\\.gexf$"))
 
 # have a nice day
