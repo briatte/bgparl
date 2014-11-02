@@ -207,6 +207,15 @@ s$sex[ s$name == "REYHAH" ] = "M"
 s$sex[ grepl("^(ANASTASIA|DANIELA|FATHME|GALINA|KRASTANKA|ILIYA|IRENA|MARGARITA|MARIA(NA)?|NIGYAR|PETYA|TATYANA|TEODORA|TSETSKA|VANYA)\\s", s$name) ] = "F"
 # table(s$sex, exclude = NULL)
 
+# imputed number of years in office (approximate)
+nyears = as.data.frame(table(s$name))
+names(nyears) = c("name", "nyears")
+s = merge(s, nyears, all.x = TRUE)
+
+# n(mandates) also converted to 4 years for ongoing legislature (2013-)
+# exclude that legislature from network sample
+s$nyears = 4 * s$nyears
+
 s$name = sapply(tolower(s$name), simpleCap)
 s$uid = paste(s$name, s$url)
 
@@ -287,7 +296,7 @@ for(l in unique(m$legislature)) {
   n %v% "born" = s[ network.vertex.names(n), "born" ]
   n %v% "party" = s[ network.vertex.names(n), "party" ]
   n %v% "partyname" = s[ network.vertex.names(n), "partyname" ]
-  # n %v% "nyears" = s[ network.vertex.names(n), "nyears" ]
+  n %v% "nyears" = s[ network.vertex.names(n), "nyears" ]
   n %v% "constituency" = s[ network.vertex.names(n), "constituency" ]
   # n %v% "photo" = s[ network.vertex.names(n), "photo" ]
   # n %v% "coalition" = NA # !fix
