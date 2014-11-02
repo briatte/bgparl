@@ -183,8 +183,8 @@ s$constituency = gsub("\\d|-| (GRAD|OKRAG|OBLAST)", "", s$constituency)
 s$constituency = sapply(tolower(s$constituency), simpleCap)
 
 # name fixes (Google translations with first name checks)
-
-s$name[ s$url == "171" ] = "Kostadin Stoyanov PASKALEV"
+s$name = scrubber(s$name)
+s$name[ s$url == "171" ] = "KOSTADIN STOYANOV PASKALEV"
 s$name[ s$url == "131" ] = "ATANAS PETROV ATANASOV"
 s$name[ s$url == "57" ] = "IVO PŬRVANOV ATANASOV"
 s$name[ s$url == "819" ] = "PETAR DIMITROV POPOV"
@@ -198,6 +198,14 @@ s$name[ s$url == "790" ] = "DENITSA IVAĬLOVA DIMITROVA"
 s$name[ s$url == "792" ] = "ILKO DIMITROV DIMITROV"
 s$name[ s$url == "209" ] = "STELA DIMITROVA ANGELOVA-BANKOVA"
 s$name[ s$url == "114" ] = "ELEONORA NIKOLAEVA NIKOLOVA"
+
+s$sex = NA
+s$sex[ str_sub(s$name, -2) %in% c("EV", "OV") ] = "M"
+s$sex[ str_sub(s$name, -2) == "VA" ] = "F"
+s$sex[ grepl("^(A(K)?HMED|ANDREY|ANGEL|ARIF|ATANAS|BELGIN|BORIS(LAV)?|BOYKO|BYUNYAMIN|DAUT|DELYAN|DESISLAVA|DIMCHO|DIMITAR|DOBROMIR|DURHAN|EMIL|ERDINCH|GEORGI|GYUNER|HAMID|HASAN|HRISTO|IVAN|IVAYLO|JORDAN|JUNAL|KAMEN|KASIM|KIRIL|KRASIMIR|LYUBEN|LYUBOMIR|LYUTVI|MARIO|MEHMED|MIHAIL|MITHAT|MUSTAFA|NEDZHMI|NESRIN|NEVIN|NIKOLA(Y)?|PAVEL|PETAR|PLAMEN|RADOSLAV|RAMADAN|REMZI|RU(M|P)EN|RUSHEN|SEMIR|SHENDOAN|STANISLAV|STEFAN|STOYAN|TCHETIN|TODOR|TSVETAN|VALENTIN|VA(S)?SIL|VESELIN|VLADIMIR|YANKO|Y(O)?UNAL|YUKSEL|YUSEIN)\\s", s$name) ] = "M"
+s$sex[ s$name == "REYHAH" ] = "M"
+s$sex[ grepl("^(ANASTASIA|DANIELA|FATHME|GALINA|KRASTANKA|ILIYA|IRENA|MARGARITA|MARIA(NA)?|NIGYAR|PETYA|TATYANA|TEODORA|TSETSKA|VANYA)\\s", s$name) ] = "F"
+# table(s$sex, exclude = NULL)
 
 s$name = sapply(tolower(s$name), simpleCap)
 s$uid = paste(s$name, s$url)
@@ -275,7 +283,7 @@ for(l in unique(m$legislature)) {
   rownames(s) = s$uid
   n %v% "url" = as.character(s[ network.vertex.names(n), "url" ])
   n %v% "name" = s[ network.vertex.names(n), "name" ]
-  # n %v% "sex" = s[ network.vertex.names(n), "sex" ]
+  n %v% "sex" = s[ network.vertex.names(n), "sex" ]
   n %v% "born" = s[ network.vertex.names(n), "born" ]
   n %v% "party" = s[ network.vertex.names(n), "party" ]
   n %v% "partyname" = s[ network.vertex.names(n), "partyname" ]
