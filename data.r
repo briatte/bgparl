@@ -12,7 +12,7 @@ data = "data/bills.csv"
 if(!file.exists(data)) {
   
   root = "http://www.parliament.bg"
-  file = "data/index.html"
+  file = "raw/index.html"
   
   if(!file.exists(file))
     download.file("http://www.parliament.bg/bg/bills", file, mode = "wb", quiet = TRUE)
@@ -26,7 +26,7 @@ if(!file.exists(data)) {
     
     mth = gsub("(.*)(\\d{4})", "\\2", i)
     cat("Scraping month", str_pad(mth, 7, "right"), "... ")
-    file = paste0("data/index-", mth, ".html")
+    file = paste0("raw/index-", mth, ".html")
     
     if(!file.exists(file))
       download.file(paste0(root, i), file, mode = "wb", quiet = TRUE)
@@ -37,7 +37,7 @@ if(!file.exists(data)) {
     for(j in rev(h)) {
       
       #     cat(sprintf("%3.0f", which(h == j)))
-      file = paste0("data/bill-", gsub("\\D", "", j), ".html")
+      file = paste0("raw/bill-", gsub("\\D", "", j), ".html")
       
       if(!file.exists(file))
         download.file(paste0(root, j), file, mode = "wb", quiet = TRUE)
@@ -88,7 +88,7 @@ if(!file.exists(data)) {
       cat(sprintf("%4.0f", which(k == i)), str_pad(i, 12, "right"))
 
       # Bulgarian (seniority)
-      file = paste0("data/mp-", gsub("\\D", "", i), "-bg.html")
+      file = paste0("raw/mp-", gsub("\\D", "", i), "-bg.html")
       
       if(!file.exists(file))
         download.file(paste0(root, i), file, mode = "wb", quiet = TRUE)
@@ -106,7 +106,7 @@ if(!file.exists(data)) {
 
       # English (rest of details)
       i = gsub("/bg/", "/en/", i)
-      file = paste0("data/mp-", gsub("\\D", "", i), ".html")
+      file = paste0("raw/mp-", gsub("\\D", "", i), ".html")
       
       if(!file.exists(file))
         download.file(paste0(root, i), file, mode = "wb", quiet = TRUE)
