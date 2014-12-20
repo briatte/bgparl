@@ -18,7 +18,7 @@ for(l in unique(m$legislature)) {
   # the edge list is built from uids: MP names, followed by the
   # numeric id from their URL; this avoid duplicate row names
   
-  edges = rbind.fill(lapply(data$authors, function(i) {
+  edges = rbind_all(lapply(data$authors, function(i) {
     
     w = unlist(strsplit(i, ";"))
     d = s[ w, "uid" ]
