@@ -155,8 +155,8 @@ for(l in unique(m$legislature)) {
   # clean up vertex names before export (stops if finds duplicates)
   network.vertex.names(n) = gsub(" \\d+$", "", network.vertex.names(n))
   stopifnot(!length(network.vertex.names(n)[ duplicated(network.vertex.names(n)) ]))
-  n %e% "source" = gsub(" \\d+$", "", n %e% "source")
-  n %e% "target" = gsub(" \\d+$", "", n %e% "target")
+  set.edge.attribute(n, "source", gsub(" \\d+$", "", n %e% "source"))
+  set.edge.attribute(n, "target", gsub(" \\d+$", "", n %e% "target"))
   
   assign(paste0("net_bg", substr(l, 1, 4)), n)
   assign(paste0("edges_bg", substr(l, 1, 4)), edges)
