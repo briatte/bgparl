@@ -38,8 +38,8 @@ The sponsors data has one row per legislature in which the sponsor sat, starting
 - `party` -- political party, abbreviated
 - `partyname` -- political party, full name
 - `job` -- sponsor occupation
-- `constituency` -- constituency
-- `url` -- URL, shortened to a number stored as text to be used as row names when assigning vertex attributes
+- `constituency` -- constituency, stored as the string to its Wikipedia English entry
+- `url` -- URL, shortened to a number (stored as text used as row names when assigning vertex attributes)
 - `uid` -- `name` + `url`, used to build the edge list
 - `sex` -- gender (F/M), imputed from first and family names ("-ev" and "-ov" for males, "-va" for females)
 - `photo` -- photo dummy, always equal to 1 because all photos were successfully downloaded

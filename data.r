@@ -165,8 +165,11 @@ for(i in unique(s$url)) {
   }
 }
 
+# convert constituencies to Wikipedia handles
 s$constituency = gsub("\\d|-| (GRAD|OKRAG|OBLAST)", "", s$constituency)
 s$constituency = sapply(tolower(s$constituency), simpleCap)
+s$constituency = paste(s$constituency, "Province")
+s$constituency = gsub("\\s", "_", s$constituency)
 
 # name fixes (Google translations with first name checks)
 s$name = str_clean(s$name)
