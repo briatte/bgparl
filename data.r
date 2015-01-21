@@ -196,15 +196,6 @@ s$sex[ s$name == "REYHAH" ] = "M"
 s$sex[ grepl("^(ANASTASIA|DANIELA|FATHME|GALINA|KRASTANKA|ILIYA|IRENA|MARGARITA|MARIA(NA)?|NIGYAR|PETYA|TATYANA|TEODORA|TSETSKA|VANYA)\\s", s$name) ] = "F"
 # table(s$sex, exclude = NULL)
 
-## old code, ignore (replaced by imputation from Bulgarian archive pages)
-## imputed number of years in office (approximate)
-# nyears = as.data.frame(table(s$name))
-# names(nyears) = c("name", "nyears")
-# s = merge(s, nyears, all.x = TRUE)
-## n(mandates) also converted to 4 years for ongoing legislature (2013-)
-## exclude that legislature from network sample
-## s$nyears = 4 * s$nyears
-
 s$name = sapply(tolower(s$name), simpleCap)
 s$uid = paste(s$name, s$url)
 
@@ -219,19 +210,8 @@ s$party[ grepl("Blue Coalition|Синята коалиция", s$party) ] = "SK"
 s$party[ grepl("United Democratic Forces|Обединени Демократични Сили", s$party) ] = "ODS"
 s$party[ grepl("Bulgarian People's Union|Български Народен Съюз", s$party) ] = "BNS"
 
-# English party names, the lazy way
-
-s$partyname = NA
-s$partyname[ s$party == "A" ] = "Ataka"
-s$partyname[ s$party == "DPS" ] = "Movement for Rights and Freedoms"
-s$partyname[ s$party == "KB" ] = "Coalition for Bulgaria"
-s$partyname[ s$party == "GERB" ] = "Citizens for European Development of Bulgaria"
-s$partyname[ s$party == "DSB" ] = "Democrats for Strong Bulgaria"
-s$partyname[ s$party == "NMS" ] = "National Movement Simeon the Second"
-s$partyname[ s$party == "RZS" ] = "Order, Lawfulness, Justice"
-s$partyname[ s$party == "SK" ] = "Blue Coalition"
-s$partyname[ s$party == "ODS" ] = "United Democratic Forces"
-s$partyname[ s$party == "BNS" ] = "Bulgarian People's Union"
+# English party names
+s$partyname = groups[ s$party ]
 
 # all sponsors recognized
 stopifnot(all(unique(unlist(strsplit(m$authors, ";"))) %in% s$url))
