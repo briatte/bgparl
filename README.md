@@ -1,7 +1,8 @@
 This repository contains code to build cosponsorship networks from bills passed in the [Bulgarian Parliament](http://www.parliament.bg/).
 
-- [interactive demo](http://briatte.org/bgparl)
-- [static plots](http://briatte.org/bgparl/plots.html)
+- [interactive demo](http://f.briatte.org/parlviz/bgparl)
+- [static plots](http://f.briatte.org/parlviz/bgparl/plots.html)
+- [more countries](https://github.com/briatte/parlnet)
 
 # HOWTO
 
