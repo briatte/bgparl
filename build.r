@@ -64,9 +64,12 @@ for(l in unique(m$legislature)) {
   edges = merge(edges, aggregate(w ~ j, function(x) sum(1 / x), data = self))
   edges$gsw = edges$nfw / edges$w
   
-  # final edge set: cosponsor, first author, weights
-  edges = edges[, c("i", "j", "raw", "nfw", "gsw") ]
+  # sanity check
+  stopifnot(edges$gsw <= 1)
   
+  # final edge set: cosponsor, first author, weights
+  edges = select(edges, i, j, raw, nfw, gsw)
+
   cat(nrow(edges), "edges, ")
   
   #
@@ -111,40 +114,28 @@ for(l in unique(m$legislature)) {
   
   n %v% "constituency" = as.character(s[ network.vertex.names(n), "constituency" ])
   
+	# unweighted degree
+	n %v% "degree" = degree(n)
+	q = n %v% "degree"
+	q = as.numeric(cut(q, unique(quantile(q)), include.lowest = TRUE))
+	
   set.edge.attribute(n, "source", as.character(edges[, 1])) # cosponsor
   set.edge.attribute(n, "target", as.character(edges[, 2])) # first author
   
   set.edge.attribute(n, "raw", edges$raw) # raw edge counts
   set.edge.attribute(n, "nfw", edges$nfw) # Newman-Fowler weights
   set.edge.attribute(n, "gsw", edges$gsw) # Gross-Shalizi weights
-  
-  #
-  # weighted measures
-  #
-  
-  # modularity
-  n = get_modularity(n, weights = "raw")
-  n = get_modularity(n, weights = "nfw")
-  n = get_modularity(n, weights = "gsw")
-  
-  # centrality
-  n = get_centrality(n, weights = "raw")
-  n = get_centrality(n, weights = "nfw")
-  n = get_centrality(n, weights = "gsw")
-  
+    
   #
   # network plot
   #
   
   if(plot) {
     
-    q = n %v% "degree"
-    q = as.numeric(cut(q, unique(quantile(q)), include.lowest = TRUE))
-    
-    ggnet_save(n, file = paste0("plots/net_bg", l),
-               i = colors[ s[ n %e% "source", "party" ] ],
-               j = colors[ s[ n %e% "target", "party" ] ],
-               q, colors, order)
+    save_plot(n, file = paste0("plots/net_bg", l),
+              i = colors[ s[ n %e% "source", "party" ] ],
+              j = colors[ s[ n %e% "target", "party" ] ],
+              q, colors, order)
     
   }
   
@@ -167,7 +158,7 @@ for(l in unique(m$legislature)) {
   #
     
   if(gexf)
-    get_gexf(paste0("net_bg", l), n, meta, mode, colors, extra = "constituency")
+    save_gexf(paste0("net_bg", l), n, meta, mode, colors, extra = "constituency")
   
 }
 
