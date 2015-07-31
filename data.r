@@ -12,7 +12,7 @@ data = "data/bills.csv"
 if(!file.exists(data)) {
   
   root = "http://www.parliament.bg"
-  file = "raw/index.html"
+  file = "raw/bill-lists/bills.html"
   
   if(!file.exists(file))
     download.file("http://www.parliament.bg/bg/bills", file, mode = "wb", quiet = TRUE)
@@ -25,8 +25,8 @@ if(!file.exists(data)) {
   for(i in h) {
     
     mth = gsub("(.*)(\\d{4})", "\\2", i)
-    cat("Scraping month", str_pad(mth, 7, "right"), "... ")
-    file = paste0("raw/index-", mth, ".html")
+    cat(str_pad(mth, 7, "right"), "... ")
+    file = paste0("raw/bill-lists/bills-", mth, ".html")
     
     if(!file.exists(file))
       download.file(paste0(root, i), file, mode = "wb", quiet = TRUE)
@@ -37,7 +37,7 @@ if(!file.exists(data)) {
     for(j in rev(h)) {
       
       #     cat(sprintf("%3.0f", which(h == j)))
-      file = paste0("raw/bill-", gsub("\\D", "", j), ".html")
+      file = paste0("raw/bill-pages/bill-", gsub("\\D", "", j), ".html")
       
       if(!file.exists(file))
         download.file(paste0(root, j), file, mode = "wb", quiet = TRUE)
@@ -48,8 +48,10 @@ if(!file.exists(data)) {
       ref = xpathSApply(hh, "//td[@class='h1']/following-sibling::td", xmlValue)
       
       b = rbind(b, data.frame(
-        uid = as.character(gsub("\\D", "", j)), ref = ref[2],
-        date = as.Date(strptime(ref[3], "%d/%m/%Y")), session = ref[4],
+        uid = as.character(gsub("\\D", "", j)),
+        ref = ref[2],
+        date = as.Date(strptime(ref[3], "%d/%m/%Y")),
+        session = ref[4],
         title = str_clean(ref[1]),
         authors = paste0(gsub("\\D", "", jj), collapse = ";"),
         committee = paste0(gsub("\\D", "",
@@ -58,7 +60,7 @@ if(!file.exists(data)) {
         stringsAsFactors = FALSE))
       
       if(any(grepl("/MP", jj)))
-        k = unique(c(k, jj))
+        k = c(k, jj)
       
     }
     
@@ -72,7 +74,8 @@ if(!file.exists(data)) {
   legislature[ is.na(legislature) & b$date < as.Date("2005-07-11") ] = "2001-2005" # l. 39
   legislature[ is.na(legislature) & b$date < as.Date("2009-07-14") ] = "2005-2009" # l. 40
   legislature[ is.na(legislature) & b$date < as.Date("2013-05-09") ] = "2009-2013" # l. 41
-  legislature[ is.na(legislature) & b$date > as.Date("2013-05-09") ] = "2013-2014" # l. 42 (ended Aug., election Oct.)
+  legislature[ is.na(legislature) & b$date < as.Date("2014-10-05") ] = "2013-2014" # l. 42 (ended Aug.)
+  legislature[ is.na(legislature) & b$date > as.Date("2014-10-04") ] = "2014-2018" # l. 43 (election 5 Oct.)
   table(legislature, b$authors != "GOV", exclude = NULL)
   
   write.csv(cbind(legislature, b), data, row.names = FALSE)
@@ -82,13 +85,14 @@ if(!file.exists(data)) {
   data = "data/sponsors.csv"
   if(!file.exists(data)) {
     
-    s = data.frame()
+    k = unique(k)
+    s = data_frame()
     for(i in rev(k)) {
 
       cat(sprintf("%4.0f", which(k == i)), str_pad(i, 12, "right"))
 
       # Bulgarian (seniority)
-      file = paste0("raw/mp-", gsub("\\D", "", i), "-bg.html")
+      file = paste0("raw/mp-pages/mp-", gsub("\\D", "", i), "-bg.html")
       
       if(!file.exists(file))
         download.file(paste0(root, i), file, mode = "wb", quiet = TRUE)
@@ -106,7 +110,7 @@ if(!file.exists(data)) {
 
       # English (rest of details)
       i = gsub("/bg/", "/en/", i)
-      file = paste0("raw/mp-", gsub("\\D", "", i), ".html")
+      file = paste0("raw/mp-pages/mp-", gsub("\\D", "", i), ".html")
       
       if(!file.exists(file))
         download.file(paste0(root, i), file, mode = "wb", quiet = TRUE)
@@ -117,7 +121,7 @@ if(!file.exists(data)) {
       born = nfo[ grepl("Date of birth|Дата на раждане", nfo) ]
       job = gsub("Profession|Професия|: |;$|N\\.A\\.", "", nfo[ grepl("Profession|Професия", nfo) ])
       
-      s = rbind(s, data.frame(
+      s = rbind(s, data_frame(
         legisl,
         name = xpathSApply(h, "//img[contains(@src, 'Assembly')]/@alt"),
         born = str_extract(born, "[0-9]{4}"),
@@ -129,9 +133,9 @@ if(!file.exists(data)) {
         constituency = gsub("Constituency: |Изборен район: |;$", "",
                             nfo[ grepl("Constituency|Изборен район", nfo) ]),
         job = ifelse(length(job), job, NA),
-        url = gsub("/en/", "", i),
-        # photo = xpathSApply(h, "//img[contains(@src, 'Assembly')]/@src"),
-        stringsAsFactors = FALSE))
+        url = gsub("/en/", "", i)
+        # photo = xpathSApply(h, "//img[contains(@src, 'Assembly')]/@src")
+      ))
       
       cat(":", tail(s, 1)$name, "\n")
       
@@ -191,17 +195,19 @@ s$name[ s$url == "114" ] = "ELEONORA NIKOLAEVA NIKOLOVA"
 s$sex = NA
 s$sex[ str_sub(s$name, -2) %in% c("EV", "OV") ] = "M"
 s$sex[ str_sub(s$name, -2) == "VA" ] = "F"
-s$sex[ grepl("^(A(K)?HMED|ANDREY|ANGEL|ARIF|ATANAS|BELGIN|BORIS(LAV)?|BOYKO|BYUNYAMIN|DAUT|DELYAN|DESISLAVA|DIMCHO|DIMITAR|DOBROMIR|DURHAN|EMIL|ERDINCH|GEORGI|GYUNER|HAMID|HASAN|HRISTO|IVAN|IVAYLO|JORDAN|JUNAL|KAMEN|KASIM|KIRIL|KRASIMIR|LYUBEN|LYUBOMIR|LYUTVI|MARIO|MEHMED|MIHAIL|MITHAT|MUSTAFA|NEDZHMI|NESRIN|NEVIN|NIKOLA(Y)?|PAVEL|PETAR|PLAMEN|RADOSLAV|RAMADAN|REMZI|RU(M|P)EN|RUSHEN|SEMIR|SHENDOAN|STANISLAV|STEFAN|STOYAN|TCHETIN|TODOR|TSVETAN|VALENTIN|VA(S)?SIL|VESELIN|VLADIMIR|YANKO|Y(O)?UNAL|YUKSEL|YUSEIN)\\s", s$name) ] = "M"
+s$sex[ grepl("^(A(K)?HMED|ANDREY|ANGEL|ARIF|ATANAS|AYDOAN|AYHAN|BELGIN|BORIS(LAV)?|BOYKO|BYUNYAMIN|DAUT|DELYAN|DESISLAVA|DIMCHO|DIMITAR|DOBROMIR|DURHAN|EMIL|ERDINCH|ERDZHAN|GEORGI|GYUNAY|GYUNER|HAMID|HASAN|HRISTO|IVAN|IVAYLO|JORDAN|JUNAL|KAMEN|KASIM|KIRIL|KRASIMIR|KRISTIAN|LYUBEN|LYUBOMIR|LYUTVI|MARIO|MEHMED|MIHAIL|MITHAT|MUSTAFA|NAYDEN|NEDZHMI|NESRIN|NEVIN|NIKOLA(Y)?|PAVEL|PETAR|PLAMEN|RADOSLAV|RAMADAN|REMZI|RU(M|P)EN|RUSHEN|SEMIR|SHABANALI|SHENDOAN|STANISLAV|STEFAN|STOYAN|TCHETIN|TODOR|TSVETAN|VALENTIN|VA(S)?SIL|VESELIN|VLADIMIR|YANKO|Y(O)?UNAL|YUKSEL|YUSEIN)\\s", s$name) ] = "M"
 s$sex[ s$name == "REYHAH" ] = "M"
-s$sex[ grepl("^(ANASTASIA|DANIELA|FATHME|GALINA|KRASTANKA|ILIYA|IRENA|MARGARITA|MARIA(NA)?|NIGYAR|PETYA|TATYANA|TEODORA|TSETSKA|VANYA)\\s", s$name) ] = "F"
-# table(s$sex, exclude = NULL)
+s$sex[ grepl("^(ANASTASIA|BOYKA|DANIELA|FATHME|GALINA|KRASIMIRA|KRASTANKA|ILIYA|IRENA|MARGARITA|MARIA(NA)?|NIGYAR|PETYA|SALIHA|TATYANA|TEODORA|TSETSKA|VANYA|VYARA)\\s", s$name) ] = "F"
+
+table(s$sex, exclude = NULL)
+stopifnot(!is.na(s$sex))
 
 s$name = sapply(tolower(s$name), simpleCap)
 s$uid = paste(s$name, s$url)
 
 s$party[ grepl("Ataka|Attack|Атака", s$party) ] = "A"
 s$party[ grepl("Movement for Rights and Freedoms|Движение за права и свободи", s$party) ] = "DPS" 
-s$party[ grepl("Coalition for Bulgaria|Коалиция за България", s$party) ] = "KB"
+s$party[ grepl("Coalition for Bulgaria|Коалиция за България|BSP Leftist Bulgaria", s$party) ] = "KB"
 s$party[ grepl("GERB|ГЕРБ", s$party) ] = "GERB"
 s$party[ grepl("Democrats for Strong Bulgaria|Демократи за Силна България", s$party) ] = "DSB"
 s$party[ grepl("National Movement Simeon the Second|Национално движение Симеон Втори", s$party) ] = "NMS"
@@ -209,9 +215,13 @@ s$party[ grepl("Order, Lawfulness Justice|Ред, законност и спра
 s$party[ grepl("Blue Coalition|Синята коалиция", s$party) ] = "SK"
 s$party[ grepl("United Democratic Forces|Обединени Демократични Сили", s$party) ] = "ODS"
 s$party[ grepl("Bulgarian People's Union|Български Народен Съюз", s$party) ] = "BNS"
+s$party[ grepl("BULGARIA WITHOUT CENSORSHIP|България без цензура", s$party) ] = "BBZ" # 2014 election
+s$party[ grepl("REFORMIST BLOC|Реформаторски блок", s$party) ] = "RB" # 2014 election
+s$party[ grepl("PATRIOTIC FRONT|Патриотичен фронт", s$party) ] = "RB" # 2014 election
 
 # English party names
-s$partyname = groups[ s$party ]
+table(s$party, exclude = NULL)
+stopifnot(!is.na(groups[ s$party ]))
 
 # all sponsors recognized
 stopifnot(all(unique(unlist(strsplit(m$authors, ";"))) %in% s$url))

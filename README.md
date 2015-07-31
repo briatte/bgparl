@@ -37,7 +37,6 @@ The sponsors data has one row per legislature in which the sponsor sat, starting
 - `born_bg` -- whether born in Bulgaria (0/1)
 - `mandates` -- a string storing the legislatures in which the sponsor sat before `legislature` (the current one)
 - `party` -- political party, abbreviated
-- `partyname` -- political party, full name
 - `job` -- sponsor occupation
 - `constituency` -- constituency, stored as the string to its Wikipedia English entry
 - `url` -- URL, shortened to a number (stored as text used as row names when assigning vertex attributes)

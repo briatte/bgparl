@@ -9,12 +9,17 @@ source("parties.r")
 dir.create("data"   , showWarnings = FALSE)
 dir.create("photos" , showWarnings = FALSE)
 dir.create("plots"  , showWarnings = FALSE)
-dir.create("raw"  , showWarnings = FALSE)
+
+dir.create("raw"             , showWarnings = FALSE)
+dir.create("raw/bill-lists"  , showWarnings = FALSE)
+dir.create("raw/bill-pages"  , showWarnings = FALSE)
 
 # parameters
 
 plot = TRUE
 gexf = TRUE
+meta = c("Bulgaria", "Narodno Sabranie")
+mode = "fruchtermanreingold"
 
 # build routine
 

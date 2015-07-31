@@ -6,12 +6,13 @@ yrs = c(
   "39" = "2001",
   "40" = "2005",
   "41" = "2009",
-  "42" = "2013")
+  "42" = "2013",
+  "43" = "2014")
 
 # find unique committees
 
 cat("Parsing committees")
-for(i in dir("raw", pattern = "mp-\\d+\\.html$", full.names = TRUE)) {
+for(i in list.files("raw/mp-pages", full.names = TRUE)) {
   
   h = htmlParse(i)
   l = xpathSApply(h, "//div[@class='MProw']//a[contains(@href, 'parliamentarycommittees/members/')]/@href")
@@ -28,7 +29,7 @@ comm = unique(comm) %>%
 
 cat(":", nrow(comm), "unique categories\n")
 
-for(i in dir("raw", pattern = "mp-\\d+\\.html$", full.names = TRUE)) {
+for(i in list.files("raw/mp-pages", full.names = TRUE)) {
   
   h = htmlParse(i)
   l = xpathSApply(h, "//div[@class='MProw']//a[contains(@href, 'parliamentarycommittees/members/')]/@href")
