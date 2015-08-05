@@ -9,12 +9,12 @@ simpleCap <- function(x) {
 # bills
 
 data = "data/bills.csv"
-if(!file.exists(data)) {
+if (!file.exists(data)) {
   
   root = "http://www.parliament.bg"
   file = "raw/bill-lists/bills.html"
   
-  if(!file.exists(file))
+  if (!file.exists(file))
     download.file("http://www.parliament.bg/bg/bills", file, mode = "wb", quiet = TRUE)
   
   h = htmlParse(file, encoding = "UTF-8")
@@ -22,24 +22,24 @@ if(!file.exists(data)) {
   
   b = data.frame()
   k = c()
-  for(i in h) {
+  for (i in h) {
     
     mth = gsub("(.*)(\\d{4})", "\\2", i)
     cat(str_pad(mth, 7, "right"), "... ")
     file = paste0("raw/bill-lists/bills-", mth, ".html")
     
-    if(!file.exists(file))
+    if (!file.exists(file))
       download.file(paste0(root, i), file, mode = "wb", quiet = TRUE)
     
     h = htmlParse(file)
     h = xpathSApply(h, "//a[contains(@href, 'bills/ID')]/@href")
     
-    for(j in rev(h)) {
+    for (j in rev(h)) {
       
       #     cat(sprintf("%3.0f", which(h == j)))
       file = paste0("raw/bill-pages/bill-", gsub("\\D", "", j), ".html")
       
-      if(!file.exists(file))
+      if (!file.exists(file))
         download.file(paste0(root, j), file, mode = "wb", quiet = TRUE)
       
       hh = htmlParse(file)
@@ -47,7 +47,7 @@ if(!file.exists(data)) {
       
       ref = xpathSApply(hh, "//td[@class='h1']/following-sibling::td", xmlValue)
       
-      b = rbind(b, data.frame(
+      b = rbind(b, data_frame(
         uid = as.character(gsub("\\D", "", j)),
         ref = ref[2],
         date = as.Date(strptime(ref[3], "%d/%m/%Y")),
@@ -57,9 +57,9 @@ if(!file.exists(data)) {
         committee = paste0(gsub("\\D", "",
                                 xpathSApply(hh, "//td[@class='h1'][7]/following-sibling::td/ul/li/a/@href")),
                            collapse = ";"),
-        stringsAsFactors = FALSE))
+      ))
       
-      if(any(grepl("/MP", jj)))
+      if (any(grepl("/MP", jj)))
         k = c(k, jj)
       
     }
@@ -83,18 +83,18 @@ if(!file.exists(data)) {
   # sponsors (none found in the bills for legislature 39, 2001-2005)
     
   data = "data/sponsors.csv"
-  if(!file.exists(data)) {
+  if (!file.exists(data)) {
     
     k = unique(k)
     s = data_frame()
-    for(i in rev(k)) {
+    for (i in rev(k)) {
 
       cat(sprintf("%4.0f", which(k == i)), str_pad(i, 12, "right"))
 
       # Bulgarian (seniority)
       file = paste0("raw/mp-pages/mp-", gsub("\\D", "", i), "-bg.html")
       
-      if(!file.exists(file))
+      if (!file.exists(file))
         download.file(paste0(root, i), file, mode = "wb", quiet = TRUE)
       
       h = htmlParse(file)
@@ -105,14 +105,14 @@ if(!file.exists(data)) {
       legisl = as.numeric(unique(substr(legisl, 1, 2)))
       stopifnot(mandates < legisl)
 
-      if(!length(mandates))
+      if (!length(mandates))
         mandates = ""
 
       # English (rest of details)
       i = gsub("/bg/", "/en/", i)
       file = paste0("raw/mp-pages/mp-", gsub("\\D", "", i), ".html")
       
-      if(!file.exists(file))
+      if (!file.exists(file))
         download.file(paste0(root, i), file, mode = "wb", quiet = TRUE)
       
       h = htmlParse(file)
@@ -155,25 +155,45 @@ s = read.csv("data/sponsors.csv", stringsAsFactors = FALSE)
 
 s$url = gsub("\\D", "", s$url)
 
-s$photo = 1 # all photos found, ignore attribute later
+s$photo = paste0("photos/", s$url, ".png") # all photos found
 
 # download photos
-for(i in unique(s$url)) {
+for (i in unique(s$url)) {
   photo = paste0("photos/", i, ".png")
-  if(!file.exists(photo))
+  if (!file.exists(photo))
     try(download.file(paste0("http://www.parliament.bg/images/Assembly/", i, ".png"),
                       photo, mode = "wb", quiet = TRUE), silent = TRUE)
-  if(!file.exists(photo) | !file.info(photo)$size) {
+  if (!file.exists(photo) | !file.info(photo)$size) {
     file.remove(photo) # will warn if missing
-    s$photo[ s$url == i ] = 0
+    s$photo[ s$url == i ] = NA
   }
 }
+
+# ==============================================================================
+# CHECK CONSTITUENCIES
+# ==============================================================================
 
 # convert constituencies to Wikipedia handles
 s$constituency = gsub("\\d|-| (GRAD|OKRAG|OBLAST)", "", s$constituency)
 s$constituency = sapply(tolower(s$constituency), simpleCap)
 s$constituency = paste(s$constituency, "Province")
 s$constituency = gsub("\\s", "_", s$constituency)
+
+cat("Checking constituencies,", sum(is.na(s$constituency)), "missing...\n")
+for (i in na.omit(unique(s$constituency))) {
+  
+  g = GET(paste0("https://", meta[ "lang"], ".wikipedia.org/wiki/", i))
+  
+  if (status_code(g) != 200)
+    cat("Missing Wikipedia entry:", i, "\n")
+  
+  g = xpathSApply(htmlParse(g), "//title", xmlValue)
+  g = gsub("(.*) - Wikipedia(.*)", "\\1", g)
+  
+  if (gsub("\\s", "_", g) != i)
+    cat("Discrepancy:", g, "(WP) !=", i ,"(data)\n")
+  
+}
 
 # name fixes (Google translations with first name checks)
 s$name = str_clean(s$name)
@@ -225,3 +245,26 @@ stopifnot(!is.na(groups[ s$party ]))
 
 # all sponsors recognized
 stopifnot(all(unique(unlist(strsplit(m$authors, ";"))) %in% s$url))
+
+# ============================================================================
+# QUALITY CONTROL
+# ============================================================================
+
+# - might be missing: born (int of length 4), constituency (chr),
+#   photo (chr, folder/file.ext)
+# - never missing: sex (chr, F/M), nyears (int), url (chr, URL),
+#   party (chr, mapped to colors)
+
+cat("Missing", sum(is.na(s$born)), "years of birth\n")
+stopifnot(is.integer(s$born) & nchar(s$born) == 4 | is.na(s$born))
+
+cat("Missing", sum(is.na(s$constituency)), "constituencies\n")
+stopifnot(is.character(s$constituency))
+
+cat("Missing", sum(is.na(s$photo)), "photos\n")
+stopifnot(is.character(s$photo) & grepl("^photos(_\\w{2})?/(.*)\\.\\w{3}", s$photo) | is.na(s$photo))
+
+stopifnot(!is.na(s$sex) & s$sex %in% c("F", "M"))
+stopifnot(!is.na(s$nyears) & is.integer(s$nyears))
+# stopifnot(!is.na(s$url) & grepl("^http(s)?://(.*)", s$url)) # used as uids
+stopifnot(s$party %in% names(colors))

@@ -12,15 +12,15 @@ yrs = c(
 # find unique committees
 
 cat("Parsing committees")
-for(i in list.files("raw/mp-pages", full.names = TRUE)) {
+for (i in list.files("raw/mp-pages", full.names = TRUE)) {
   
   h = htmlParse(i)
   l = xpathSApply(h, "//div[@class='MProw']//a[contains(@href, 'parliamentarycommittees/members/')]/@href")
   y = s$legisl[ s$url == gsub("\\D", "", i) ]
   n = xpathSApply(h, "//div[@class='MProw']//a[contains(@href, 'parliamentarycommittees/members/')]", xmlValue)
   #n = str_clean(n)
-  if(length(l))
-    comm = rbind(comm, data.frame(y, n, l, stringsAsFactors = FALSE))
+  if (length(l))
+    comm = rbind(comm, data_frame(y, n, l))
   
 }
 
@@ -29,7 +29,7 @@ comm = unique(comm) %>%
 
 cat(":", nrow(comm), "unique categories\n")
 
-for(i in list.files("raw/mp-pages", full.names = TRUE)) {
+for (i in list.files("raw/mp-pages", full.names = TRUE)) {
   
   h = htmlParse(i)
   l = xpathSApply(h, "//div[@class='MProw']//a[contains(@href, 'parliamentarycommittees/members/')]/@href")
@@ -46,7 +46,7 @@ write.csv(cbind(comm[, 1:3 ], members = rowSums(comm[, -1:-3 ])),
           "data/committees.csv", row.names = FALSE)
 
 # assign co-memberships to networks
-for(i in unique(comm$legislature)) {
+for (i in unique(comm$legislature)) {
   
   cat("Legislature", i)
   
@@ -64,12 +64,10 @@ for(i in unique(comm$legislature)) {
   rownames(m) = sp[ rownames(m) ]
   
   n = get(paste0("net_bg", yrs[ as.character(i) ]))
-  e = data.frame(i = n %e% "source", 
-                 j = n %e% "target", 
-                 stringsAsFactors = FALSE)
+  e = data_frame(i = n %e% "source", j = n %e% "target")
   e$committee = NA
   
-  for(j in 1:nrow(e))
+  for (j in 1:nrow(e))
     e$committee[ j ] = m[ e$i[ j ], e$j[ j ] ]
   
   cat(" co-memberships:", 

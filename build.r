@@ -1,4 +1,4 @@
-for(l in unique(m$legislature)) {
+for (l in m$legislature %>% unique %>% sort) {
   
   data = subset(m, legislature == l & n_au > 1)
   cat("Legislature", l, ":", nrow(data), "cosponsored documents, ")
@@ -52,10 +52,10 @@ for(l in unique(m$legislature)) {
   edges = aggregate(w ~ ij, function(x) sum(1 / x), data = edges)
   
   # expand to edge list
-  edges = data.frame(i = gsub("(.*)///(.*)", "\\1", edges$ij),
+  edges = data_frame(i = gsub("(.*)///(.*)", "\\1", edges$ij),
                      j = gsub("(.*)///(.*)", "\\2", edges$ij),
                      raw = as.vector(raw[ edges$ij ]), # raw edge counts
-                     nfw = edges$w, stringsAsFactors = FALSE)
+                     nfw = edges$w)
   
   # Gross-Shalizi weights (weighted propensity to cosponsor)
   edges = merge(edges, aggregate(w ~ j, function(x) sum(1 / x), data = self))
@@ -75,11 +75,18 @@ for(l in unique(m$legislature)) {
   
   n = network(edges[, 1:2 ], directed = TRUE)
   
-  n %n% "country" = meta[1]
-  n %n% "title" = paste(meta[2], paste0(range(unique(substr(data$date, 1, 4))),
-                                        collapse = " to "))
+  n %n% "country" = meta[ "cty" ] %>% as.character
+  n %n% "lang" = meta[ "lang" ] %>% as.character
+  n %n% "years" = l
+  n %n% "legislature" = c("2001-2005" = "39", "2005-2009" = "40",
+                          "2009-2013" = "41", "2013-2014" = "42",
+                          "2014-2018" = "43")[l] %>% as.character
+  n %n% "chamber" = meta[ "ch" ] %>% as.character
+  n %n% "type" = meta[ "type" ] %>% as.character
+  n %n% "ipu" = meta[ "ipu" ] %>% as.integer
+  n %n% "seats" = meta[ "seats" ] %>% as.integer
   
-  n %n% "n_bills" = nrow(data)
+  n %n% "n_cosponsored" = nrow(data)
   n %n% "n_sponsors" = table(subset(m, legislature == l)$n_au)
   
   n_au = as.vector(n_au[ network.vertex.names(n) ])
@@ -95,26 +102,15 @@ for(l in unique(m$legislature)) {
   # switch to uids for vertex attributes
   rownames(s) = s$uid
   
-  n %v% "url" = as.character(s[ network.vertex.names(n), "url" ])  
-  n %v% "sex" = as.character(s[ network.vertex.names(n), "sex" ])
-  n %v% "born" = as.numeric(substr(s[ network.vertex.names(n), "born" ], 1, 4))
-  
+  n %v% "url" = paste0("http://www.parliament.bg/en/MP/", s[ network.vertex.names(n), "url" ])
+  n %v% "sex" = s[ network.vertex.names(n), "sex" ]
+  n %v% "born" = s[ network.vertex.names(n), "born" ]
   n %v% "party" = s[ network.vertex.names(n), "party" ]
-  n %v% "partyname" = as.character(groups[ n %v% "party" ])
-  n %v% "lr" = as.numeric(scores[ n %v% "party" ])
-  
-  # unnecessary: all photos present, just use URL to impute on the fly
-  n %v% "photo" = as.character(s[ network.vertex.names(n), "photo" ])
-  
-  # mandate years done up to start year of legislature (imputed before)
-  n %v% "nyears" = as.numeric(s[ network.vertex.names(n), "nyears" ])
-  
-  n %v% "constituency" = as.character(s[ network.vertex.names(n), "constituency" ])
-  
-  # unweighted degree
-  n %v% "degree" = degree(n)
-  q = n %v% "degree"
-  q = as.numeric(cut(q, unique(quantile(q)), include.lowest = TRUE))
+  n %v% "partyname" = groups[ n %v% "party" ] %>% as.character
+  n %v% "lr" = scores[ n %v% "party" ] %>% as.numeric
+  n %v% "photo" = s[ network.vertex.names(n), "photo" ]
+  n %v% "nyears" = s[ network.vertex.names(n), "nyears" ] # pre-computed
+  n %v% "constituency" = s[ network.vertex.names(n), "constituency" ]
   
   set.edge.attribute(n, "source", as.character(edges[, 1])) # cosponsor
   set.edge.attribute(n, "target", as.character(edges[, 2])) # first author
@@ -127,12 +123,12 @@ for(l in unique(m$legislature)) {
   # network plot
   #
   
-  if(plot) {
+  if (plot) {
     
-    save_plot(n, file = paste0("plots/net_bg", l),
+    save_plot(n, paste0("plots/net_bg", l),
               i = colors[ s[ n %e% "source", "party" ] ],
               j = colors[ s[ n %e% "target", "party" ] ],
-              q, colors, order)
+              mode, colors)
     
   }
   
@@ -154,12 +150,12 @@ for(l in unique(m$legislature)) {
   # export gexf
   #
     
-  if(gexf)
-    save_gexf(paste0("net_bg", l), n, meta, mode, colors, extra = "constituency")
+  if (gexf)
+    save_gexf(n, paste0("net_bg", l), mode, colors)
   
 }
 
-if(gexf)
+if (gexf)
   zip("net_bg.zip", dir(pattern = "^net_bg\\d{4}-\\d{4}\\.gexf$"))
 
 save(list = ls(pattern = "^(net|edges|bills)_bg\\d{4}$"),

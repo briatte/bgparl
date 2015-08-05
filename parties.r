@@ -51,5 +51,5 @@ scores = c(
   "RZS" = 8.7
 )
 
+stopifnot(names(colors) == names(groups))
 stopifnot(names(colors) == names(scores))
-order = names(colors)[ order(scores) ]

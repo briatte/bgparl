@@ -18,8 +18,15 @@ dir.create("raw/bill-pages"  , showWarnings = FALSE)
 
 plot = TRUE
 gexf = TRUE
-meta = c("Bulgaria", "Narodno Sabranie")
 mode = "fruchtermanreingold"
+meta = c(
+  "cty" = "Bulgaria",
+  "lang" = "en", # Wikipedia language for chamber and constituencies
+  "ch" = "Narodno Sabranie",
+  "type" = "Unicameral",
+  "ipu" = 2045,
+  "seats" = 240
+)
 
 # build routine
 
