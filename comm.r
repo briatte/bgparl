@@ -1,7 +1,6 @@
 # add committee co-memberships
 
-load("data/net_bg.rda")
-comm = data.frame()
+comm = data_frame()
 yrs = c(
   "39" = "2001",
   "40" = "2005",
@@ -89,6 +88,3 @@ for (i in unique(comm$legislature)) {
   assign(paste0("conet_bg", yrs[ as.character(i) ]), nn)
     
 }
-
-save(list = ls(pattern = "^((co)?net|edges|bills)_bg\\d{4}$"),
-     file = "data/net_bg.rda")
