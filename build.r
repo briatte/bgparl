@@ -1,43 +1,40 @@
+years = c("2001-2005" = 39, "2005-2009" = 40, "2009-2013" = 41,
+          "2013-2014" = 42, "2014-2018" = 43)
+
 for (l in m$legislature %>% unique %>% sort) {
   
-  data = subset(m, legislature == l & n_au > 1)
+  data = filter(m, legislature == l & n_au > 1)
   cat("Legislature", l, ":", nrow(data), "cosponsored documents, ")
   
-  rownames(s) = s$url
-  
-  # selects only MPs from the right legislature
-  # print(table(s[ unique(unlist(strsplit(data$authors, ";"))), "legisl" ]))
+  sp = filter(s, legislature == years[ l ]) %>% data.frame
+  rownames(sp) = sp$name
   
   # ============================================================================
   # DIRECTED EDGE LIST
   # ============================================================================
   
-  # the edge list is built from uids: MP names, followed by the
-  # numeric id from their URL; this avoid duplicate row names
-  
-  edges = bind_rows(lapply(data$authors, function(i) {
+  edges = lapply(data$authors, function(i) {
     
-    w = unlist(strsplit(i, ";"))
-    d = s[ w, "uid" ]
+    w = strsplit(i, ";") %>% unlist
+    return(expand.grid(i = sp$name[ sp$url %in% w ],
+                       j = sp$name[ sp$url == w[1]],
+                       w = length(w) - 1,
+                       stringsAsFactors = FALSE))
     
-    d = expand.grid(i = d, j = d[ 1 ], stringsAsFactors = FALSE)
-    
-    return(data.frame(d, w = length(w) - 1)) # number of cosponsors
-    
-  }))
+  }) %>% bind_rows
   
   # ============================================================================
   # EDGE WEIGHTS
   # ============================================================================
   
   # first author self-loops, with counts of cosponsors
-  self = subset(edges, i == j)
+  self = filter(edges, i == j)
   
   # count number of bills per first author
   n_au = table(self$j)
   
   # remove self-loops from directed edge list
-  edges = subset(edges, i != j)
+  edges = filter(edges, i != j)
   
   # count number of bills cosponsored per sponsor
   n_co = table(edges$i)
@@ -78,16 +75,14 @@ for (l in m$legislature %>% unique %>% sort) {
   n %n% "country" = meta[ "cty" ] %>% as.character
   n %n% "lang" = meta[ "lang" ] %>% as.character
   n %n% "years" = l
-  n %n% "legislature" = c("2001-2005" = "39", "2005-2009" = "40",
-                          "2009-2013" = "41", "2013-2014" = "42",
-                          "2014-2018" = "43")[l] %>% as.character
+  n %n% "legislature" = years[ l ] %>% as.character
   n %n% "chamber" = meta[ "ch" ] %>% as.character
   n %n% "type" = meta[ "type" ] %>% as.character
   n %n% "ipu" = meta[ "ipu" ] %>% as.integer
   n %n% "seats" = meta[ "seats" ] %>% as.integer
   
   n %n% "n_cosponsored" = nrow(data)
-  n %n% "n_sponsors" = table(subset(m, legislature == l)$n_au)
+  n %n% "n_sponsors" = table(filter(m, legislature == l)$n_au)
 
   # ============================================================================
   # VERTEX-LEVEL ATTRIBUTES
@@ -104,18 +99,16 @@ for (l in m$legislature %>% unique %>% sort) {
   
   cat(network.size(n), "nodes\n")
   
-  # switch to uids for vertex attributes
-  rownames(s) = s$uid
-  
-  n %v% "url" = paste0("http://www.parliament.bg/en/MP/", s[ network.vertex.names(n), "url" ])
-  n %v% "sex" = s[ network.vertex.names(n), "sex" ]
-  n %v% "born" = s[ network.vertex.names(n), "born" ]
-  n %v% "party" = s[ network.vertex.names(n), "party" ]
+  n %v% "url" = paste0("http://www.parliament.bg/en/MP/",
+                       sp[ network.vertex.names(n), "url" ])
+  n %v% "sex" = sp[ network.vertex.names(n), "sex" ]
+  n %v% "born" = sp[ network.vertex.names(n), "born" ]
+  n %v% "party" = sp[ network.vertex.names(n), "party" ]
   n %v% "partyname" = groups[ n %v% "party" ] %>% as.character
   n %v% "lr" = scores[ n %v% "party" ] %>% as.numeric
-  n %v% "photo" = s[ network.vertex.names(n), "photo" ]
-  n %v% "nyears" = s[ network.vertex.names(n), "nyears" ] # pre-computed
-  n %v% "constituency" = s[ network.vertex.names(n), "constituency" ]
+  n %v% "photo" = sp[ network.vertex.names(n), "photo" ]
+  n %v% "nyears" = sp[ network.vertex.names(n), "nyears" ] # pre-computed
+  n %v% "constituency" = sp[ network.vertex.names(n), "constituency" ]
   
   set.edge.attribute(n, "source", as.character(edges[, 1])) # cosponsor
   set.edge.attribute(n, "target", as.character(edges[, 2])) # first author
@@ -131,8 +124,8 @@ for (l in m$legislature %>% unique %>% sort) {
   if (plot) {
     
     save_plot(n, paste0("plots/net_bg", l),
-              i = colors[ s[ n %e% "source", "party" ] ],
-              j = colors[ s[ n %e% "target", "party" ] ],
+              i = colors[ sp[ n %e% "source", "party" ] ],
+              j = colors[ sp[ n %e% "target", "party" ] ],
               mode, colors)
     
   }
@@ -140,12 +133,6 @@ for (l in m$legislature %>% unique %>% sort) {
   # ============================================================================
   # SAVE OBJECTS
   # ============================================================================
-  
-  # clean up vertex names before export (stops if finds duplicates)
-  network.vertex.names(n) = gsub(" \\d+$", "", network.vertex.names(n))
-  stopifnot(!length(network.vertex.names(n)[ duplicated(network.vertex.names(n)) ]))
-  set.edge.attribute(n, "source", gsub(" \\d+$", "", n %e% "source"))
-  set.edge.attribute(n, "target", gsub(" \\d+$", "", n %e% "target"))
   
   assign(paste0("net_bg", substr(l, 1, 4)), n)
   assign(paste0("edges_bg", substr(l, 1, 4)), edges)

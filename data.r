@@ -101,8 +101,8 @@ if (!file.exists(data)) {
       mandates = xpathSApply(h, "//div[@class='MPinfo']/ul/li[contains(text(), 'НС:')]", xmlValue)
       mandates = as.numeric(unlist(str_extract_all(mandates, "[0-9]+")))
       
-      legisl = xpathSApply(h, "//a[contains(@href, '/bg/MP/members/')]", xmlValue)
-      legisl = as.numeric(unique(substr(legisl, 1, 2)))
+      legislature = xpathSApply(h, "//a[contains(@href, '/bg/MP/members/')]", xmlValue)
+      legislature = substr(legislature, 1, 2) %>% unique %>% as.integer
       stopifnot(mandates < legisl)
 
       if (!length(mandates))
@@ -122,7 +122,7 @@ if (!file.exists(data)) {
       job = gsub("Profession|Професия|: |;$|N\\.A\\.", "", nfo[ grepl("Profession|Професия", nfo) ])
       
       s = rbind(s, data_frame(
-        legisl,
+        legislature,
         name = xpathSApply(h, "//img[contains(@src, 'Assembly')]/@alt"),
         born = str_extract(born, "[0-9]{4}"),
         born_bg = as.numeric(grepl("Bulgaria|България", born)), # born in Bulgaria (0/1)
@@ -148,25 +148,29 @@ if (!file.exists(data)) {
 }
 
 m = read.csv("data/bills.csv", stringsAsFactors = FALSE)
-m = subset(m, authors != "GOV")
-m$n_au = 1 + str_count (m$authors, ";")
+m = filter(m, authors != "GOV")
+m$n_au = 1 + str_count(m$authors, ";")
 
 s = read.csv("data/sponsors.csv", stringsAsFactors = FALSE)
 
 s$url = gsub("\\D", "", s$url)
-
 s$photo = paste0("photos/", s$url, ".png") # all photos found
 
 # download photos
 for (i in unique(s$url)) {
+  
   photo = paste0("photos/", i, ".png")
   if (!file.exists(photo))
     try(download.file(paste0("http://www.parliament.bg/images/Assembly/", i, ".png"),
                       photo, mode = "wb", quiet = TRUE), silent = TRUE)
-  if (!file.exists(photo) | !file.info(photo)$size) {
-    file.remove(photo) # will warn if missing
+  
+  if (!file.info(photo)$size) {
+    
+    file.remove(photo)
     s$photo[ s$url == i ] = NA
+    
   }
+  
 }
 
 # ==============================================================================
@@ -223,7 +227,6 @@ table(s$sex, exclude = NULL)
 stopifnot(!is.na(s$sex))
 
 s$name = sapply(tolower(s$name), simpleCap)
-s$uid = paste(s$name, s$url)
 
 s$party[ grepl("Ataka|Attack|Атака", s$party) ] = "A"
 s$party[ grepl("Movement for Rights and Freedoms|Движение за права и свободи", s$party) ] = "DPS" 
