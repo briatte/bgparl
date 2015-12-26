@@ -45,18 +45,18 @@ if (!file.exists(data)) {
       hh = htmlParse(file)
       jj = xpathSApply(hh, "//ul[@class='frontList'][1]/li/a/@href")
       
-      ref = xpathSApply(hh, "//td[@class='h1']/following-sibling::td", xmlValue)
+      refs = xpathSApply(hh, "//td[@class='h1']/following-sibling::td", xmlValue)
       
       b = rbind(b, data_frame(
         uid = as.character(gsub("\\D", "", j)),
-        ref = ref[2],
-        date = as.Date(strptime(ref[3], "%d/%m/%Y")),
-        session = ref[4],
-        title = str_clean(ref[1]),
+        ref = refs[2],
+        date = as.Date(strptime(refs[3], "%d/%m/%Y")),
+        session = refs[4],
+        title = str_clean(refs[1]),
         authors = paste0(gsub("\\D", "", jj), collapse = ";"),
         committee = paste0(gsub("\\D", "",
                                 xpathSApply(hh, "//td[@class='h1'][7]/following-sibling::td/ul/li/a/@href")),
-                           collapse = ";"),
+                           collapse = ";")
       ))
       
       if (any(grepl("/MP", jj)))
@@ -103,7 +103,7 @@ if (!file.exists(data)) {
       
       legislature = xpathSApply(h, "//a[contains(@href, '/bg/MP/members/')]", xmlValue)
       legislature = substr(legislature, 1, 2) %>% unique %>% as.integer
-      stopifnot(mandates < legisl)
+      stopifnot(mandates < legislature)
 
       if (!length(mandates))
         mandates = ""
